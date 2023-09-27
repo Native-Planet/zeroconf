@@ -93,8 +93,10 @@ func joinUdp4Multicast(interfaces []net.Interface) (*ipv4.PacketConn, error) {
 			continue
 		}
 		skipIface := false
+		fmt.Println("[zeroconf]:",addrs)
 		for _, addr := range addrs {
 			if strings.HasPrefix(addr.String(), "172") {
+				fmt.Println("[zeroconf]: skipping",addr)
 				skipIface = true
 				break
 			}
