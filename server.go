@@ -617,14 +617,15 @@ func (s *Server) unregister() error {
 }
 
 func (s *Server) appendAddrs(list []dns.RR, ttl uint32, ifIndex int, flushCache bool) []dns.RR {
-	v4 := s.service.AddrIPv4
-	v6 := s.service.AddrIPv6
-	if len(v4) == 0 && len(v6) == 0 {
-		iface, _ := net.InterfaceByIndex(ifIndex)
-		if iface != nil {
-			a4, a6 := addrsForInterface(iface)
-			v4 = append(v4, a4...)
-			v6 = append(v6, a6...)
+	iSrc, err := net.InterfaceByIndex(ifIndex)
+	if err == nil {
+		// fmt.Println(i1.Name)
+		for _, i := range s.ifaces {
+			if i.Name == iSrc.Name {
+				a4, a6 := addrsForInterface(iSrc)
+				v4 = append(v4, a4...)
+				v6 = append(v6, a6...)
+			}
 		}
 	}
 	if ttl > 0 {
@@ -739,9 +740,6 @@ func (s *Server) multicastResponse(msg *dns.Msg, ifIndex int) error {
 			s.ipv4conn.WriteTo(buf, &wcm, ipv4Addr)
 		} else {
 			for _, intf := range s.ifaces {
-				if shouldExcludeInterface(intf) {
-					continue
-				}
 				switch runtime.GOOS {
 				case "darwin", "ios", "linux":
 					wcm.IfIndex = intf.Index
@@ -796,24 +794,4 @@ func isUnicastQuestion(q dns.Question) bool {
 	//    qclass field is used to indicate that unicast responses are preferred
 	//    for this particular question.  (See Section 5.4.)
 	return q.Qclass&qClassCacheFlush != 0
-}
-
-
-func shouldExcludeInterface(intf net.Interface) bool {
-    addrs, err := intf.Addrs()
-    if err != nil {
-        return false
-    }
-
-    for _, addr := range addrs {
-        if ipNet, ok := addr.(*net.IPNet); ok {
-            if ipNet.IP.IsLoopback() {
-                continue
-            }
-            if ipNet.IP.To4() != nil && strings.HasPrefix(ipNet.IP.String(), "172") {
-                return true
-            }
-        }
-    }
-    return false
 }
