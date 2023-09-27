@@ -739,6 +739,9 @@ func (s *Server) multicastResponse(msg *dns.Msg, ifIndex int) error {
 			s.ipv4conn.WriteTo(buf, &wcm, ipv4Addr)
 		} else {
 			for _, intf := range s.ifaces {
+				if shouldExcludeInterface(intf) {
+					continue
+				}
 				switch runtime.GOOS {
 				case "darwin", "ios", "linux":
 					wcm.IfIndex = intf.Index
@@ -793,4 +796,24 @@ func isUnicastQuestion(q dns.Question) bool {
 	//    qclass field is used to indicate that unicast responses are preferred
 	//    for this particular question.  (See Section 5.4.)
 	return q.Qclass&qClassCacheFlush != 0
+}
+
+
+func shouldExcludeInterface(intf net.Interface) bool {
+    addrs, err := intf.Addrs()
+    if err != nil {
+        return false
+    }
+
+    for _, addr := range addrs {
+        if ipNet, ok := addr.(*net.IPNet); ok {
+            if ipNet.IP.IsLoopback() {
+                continue
+            }
+            if ipNet.IP.To4() != nil && strings.HasPrefix(ipNet.IP.String(), "172") {
+                return true
+            }
+        }
+    }
+    return false
 }
