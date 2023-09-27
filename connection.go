@@ -3,6 +3,7 @@ package zeroconf
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -85,6 +86,23 @@ func joinUdp4Multicast(interfaces []net.Interface) (*ipv4.PacketConn, error) {
 
 	var failedJoins int
 	for _, iface := range interfaces {
+		// Ignore 172 addresses to avoid docker issues
+		addrs, err := iface.Addrs()
+		if err != nil {
+			// handle error, perhaps log it
+			continue
+		}
+		skipIface := false
+		for _, addr := range addrs {
+			if strings.HasPrefix(addr.String(), "172") {
+				skipIface = true
+				break
+			}
+		}
+		if skipIface {
+			continue
+		}
+
 		if err := pkConn.JoinGroup(&iface, &net.UDPAddr{IP: mdnsGroupIPv4}); err != nil {
 			// log.Println("Udp4 JoinGroup failed for iface ", iface)
 			failedJoins++
