@@ -9,7 +9,7 @@ import (
 
 	"time"
 
-	"github.com/grandcat/zeroconf"
+	"github.com/Native-Planet/zeroconf"
 )
 
 var (
